@@ -1,0 +1,72 @@
+name: 每周更新行业热点
+
+on:
+  schedule:
+    # 每周一 01:00 UTC = 北京时间 09:00
+    - cron: '0 1 * * 1'
+  workflow_dispatch: {}   # 允许在 Actions 页面手动触发测试
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+      LLM_MODEL: ${{ vars.LLM_MODEL }}
+
+    steps:
+      - name: 拉取仓库
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 生成热点草稿
+        id: gen
+        run: python scripts/gen_trends.py
+
+      # —— 已配置 API Key：生成草稿后开 PR，人工确认再合并 ——
+      - name: 提交 PR（供人工确认）
+        if: ${{ env.LLM_API_KEY != '' }}
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: 'chore: 本周行业热点草稿'
+          title: '📈 行业热点周更草稿（请核对来源后合并）'
+          body: |
+            自动生成的「北弄 × 南巷」行业热点与潜力商品**草稿**。
+
+            请核对每条数据的来源与年份后再点 **Merge** 上线。
+            如无需要更新，直接关闭本 PR 即可。
+          branch: trends/weekly-update
+          delete-branch: true
+
+      # —— 未配置 API Key：不写数据，改为每周开一条提醒 Issue ——
+      - name: 无 Key → 开提醒 Issue
+        if: ${{ env.LLM_API_KEY == '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '📌 本周该更新「行业热点」了';
+            const iso = new Date().toISOString().slice(0,10);
+            const body = [
+              '未配置大模型 Key，因此**不自动生成内容**（避免写入未经核实的数据）。',
+              '',
+              '请手动更新热点，二选一：',
+              '1. 在工作台「行业热点」里点 **导入热点（JSON）**（先拿到新的 JSON）；',
+              '2. 或在本仓库直接编辑 `trends.json` 后提交。',
+              '',
+              '> 本提醒由 GitHub Actions 每周一自动创建。'
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title + '（' + iso + '）',
+              body,
+            });
