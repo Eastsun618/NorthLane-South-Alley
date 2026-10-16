@@ -38,11 +38,11 @@
 ## 三、让网页读到最新热点（关键 1 行）
 用文本编辑器打开工作台 HTML，找到：
 ```js
-const TRENDS_URL = '';
+const TRENDS_URL = 'https://cdn.jsdelivr.net/gh/Eastsun618/bnl-nl-desk@main/trends.json';
 ```
 改成（推荐 jsDelivr，跨域最稳）：
 ```js
-const TRENDS_URL = 'https://cdn.jsdelivr.net/gh/你的用户名/bnl-nl-desk@main/trends.json';
+const TRENDS_URL = 'https://cdn.jsdelivr.net/gh/Eastsun618/bnl-nl-desk@main/trends.json';
 ```
 保存后重新上传覆盖。**以后每满 7 天，网页自动去拉一次最新热点**（拉不到就继续用本地内置数据，不会白屏）。
 
